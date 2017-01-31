@@ -55,7 +55,10 @@ type ErrorResponse struct {
 	// HTTP response that caused this error
 	Response *http.Response
 
-	// Error message
+	Code string `json:"code"`
+	// Type is the error group name (auth_error, request_error, api_error vs..)
+	Type string `json:"type"`
+	// Message is the human readable form of the error message
 	Message string `json:"message"`
 
 	// RequestID returned from the API, useful to contact support.
