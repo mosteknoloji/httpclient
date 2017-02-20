@@ -135,7 +135,7 @@ func SetUserAgent(ua string) ClientOpt {
 // NewRequest creates an API request. A relative URL can be provided in urlStr, which will be resolved to the
 // BaseURL of the Client. Relative URLS should always be specified without a preceding slash. If specified, the
 // value pointed to by body is JSON encoded and included in as the request body.
-func (c *HttpClient) NewRequest(method, urlStr string, body interface{}, opts []RequestOpt) (*http.Request, error) {
+func (c *HttpClient) NewRequest(method, urlStr string, body interface{}, opts ...RequestOpt) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -332,7 +332,7 @@ func StreamToString(stream io.Reader) string {
 
 // helper function for making an http GET request.
 func (c *HttpClient) Get(path string, out interface{}, opts ...RequestOpt) (*Response, error) {
-	req, err := c.NewRequest("GET", path, nil, opts)
+	req, err := c.NewRequest("GET", path, nil, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func (c *HttpClient) Get(path string, out interface{}, opts ...RequestOpt) (*Res
 
 // helper function for making an http POST request.
 func (c *HttpClient) Post(path string, in, out interface{}, opts ...RequestOpt) (*Response, error) {
-	req, err := c.NewRequest("POST", path, in, opts)
+	req, err := c.NewRequest("POST", path, in, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func (c *HttpClient) Put(path string, in, out interface{}, opts ...RequestOpt) (
 		return nil, NewArgError("PUT body", "cannot be nil")
 	}
 
-	req, err := c.NewRequest("PUT", path, in, opts)
+	req, err := c.NewRequest("PUT", path, in, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +384,7 @@ func (c *HttpClient) Patch(path string, in, out interface{}, opts ...RequestOpt)
 		return nil, NewArgError("PATCH body", "cannot be nil")
 	}
 
-	req, err := c.NewRequest("PATCH", path, in, opts)
+	req, err := c.NewRequest("PATCH", path, in, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +399,7 @@ func (c *HttpClient) Patch(path string, in, out interface{}, opts ...RequestOpt)
 
 // helper function for making an http DELETE request.
 func (c *HttpClient) Delete(path string, opts ...RequestOpt) (*Response, error) {
-	req, err := c.NewRequest("DELETE", path, nil, opts)
+	req, err := c.NewRequest("DELETE", path, nil, opts...)
 	if err != nil {
 		return nil, err
 	}
