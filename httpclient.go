@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -22,9 +23,10 @@ var (
 const (
 	mediaType = "application/json"
 
-	headerRateLimit     = "RateLimit-Limit"
-	headerRateRemaining = "RateLimit-Remaining"
-	headerRateReset     = "RateLimit-Reset"
+	headerRateLimit     = "X-RateLimit-Limit"
+	headerRateRemaining = "X-RateLimit-Remaining"
+	headerRateReset     = "X-RateLimit-Reset"
+	headerRequestID     = "X-Request-ID"
 )
 
 type HttpClient struct {
@@ -55,9 +57,10 @@ type ErrorResponse struct {
 	// HTTP response that caused this error
 	Response *http.Response
 
-	Code string `json:"code"`
-	// Type is the error group name (auth_error, request_error, api_error vs..)
+	// Type is the error group name (auth_error, request_error, api_error, external_error vs..)
 	Type string `json:"type"`
+	// Code is the error short name (invalid_id, user_not_found)
+	Code string `json:"code"`
 	// Message is the human readable form of the error message
 	Message string `json:"message"`
 
@@ -135,7 +138,7 @@ func SetUserAgent(ua string) ClientOpt {
 // NewRequest creates an API request. A relative URL can be provided in urlStr, which will be resolved to the
 // BaseURL of the Client. Relative URLS should always be specified without a preceding slash. If specified, the
 // value pointed to by body is JSON encoded and included in as the request body.
-func (c *HttpClient) NewRequest(method, urlStr string, body interface{}, opts ...RequestOpt) (*http.Request, error) {
+func (c *HttpClient) NewRequest(ctx context.Context, method string, urlStr string, body interface{}, opts ...RequestOpt) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -165,6 +168,9 @@ func (c *HttpClient) NewRequest(method, urlStr string, body interface{}, opts ..
 	req.Header.Add("Content-Type", mediaType)
 	req.Header.Add("Accept", mediaType)
 	req.Header.Add("User-Agent", c.UserAgent)
+	if id, ok := ctx.Value("Request-ID").(string); ok {
+		req.Header.Add(headerRequestID, id)
+	}
 	return req, nil
 }
 
@@ -331,8 +337,8 @@ func StreamToString(stream io.Reader) string {
 //
 
 // helper function for making an http GET request.
-func (c *HttpClient) Get(path string, out interface{}, opts ...RequestOpt) (*Response, error) {
-	req, err := c.NewRequest("GET", path, nil, opts...)
+func (c *HttpClient) Get(ctx context.Context, path string, out interface{}, opts ...RequestOpt) (*Response, error) {
+	req, err := c.NewRequest(ctx, "GET", path, nil, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -345,8 +351,8 @@ func (c *HttpClient) Get(path string, out interface{}, opts ...RequestOpt) (*Res
 }
 
 // helper function for making an http POST request.
-func (c *HttpClient) Post(path string, in, out interface{}, opts ...RequestOpt) (*Response, error) {
-	req, err := c.NewRequest("POST", path, in, opts...)
+func (c *HttpClient) Post(ctx context.Context, path string, in, out interface{}, opts ...RequestOpt) (*Response, error) {
+	req, err := c.NewRequest(ctx, "POST", path, in, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -360,12 +366,12 @@ func (c *HttpClient) Post(path string, in, out interface{}, opts ...RequestOpt) 
 }
 
 // helper function for making an http PUT request.
-func (c *HttpClient) Put(path string, in, out interface{}, opts ...RequestOpt) (*Response, error) {
+func (c *HttpClient) Put(ctx context.Context, path string, in, out interface{}, opts ...RequestOpt) (*Response, error) {
 	if in == nil {
 		return nil, NewArgError("PUT body", "cannot be nil")
 	}
 
-	req, err := c.NewRequest("PUT", path, in, opts...)
+	req, err := c.NewRequest(ctx, "PUT", path, in, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -379,12 +385,12 @@ func (c *HttpClient) Put(path string, in, out interface{}, opts ...RequestOpt) (
 }
 
 // helper function for making an http PATCH request.
-func (c *HttpClient) Patch(path string, in, out interface{}, opts ...RequestOpt) (*Response, error) {
+func (c *HttpClient) Patch(ctx context.Context, path string, in, out interface{}, opts ...RequestOpt) (*Response, error) {
 	if in == nil {
 		return nil, NewArgError("PATCH body", "cannot be nil")
 	}
 
-	req, err := c.NewRequest("PATCH", path, in, opts...)
+	req, err := c.NewRequest(ctx, "PATCH", path, in, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -398,8 +404,8 @@ func (c *HttpClient) Patch(path string, in, out interface{}, opts ...RequestOpt)
 }
 
 // helper function for making an http DELETE request.
-func (c *HttpClient) Delete(path string, opts ...RequestOpt) (*Response, error) {
-	req, err := c.NewRequest("DELETE", path, nil, opts...)
+func (c *HttpClient) Delete(ctx context.Context, path string, opts ...RequestOpt) (*Response, error) {
+	req, err := c.NewRequest(ctx, "DELETE", path, nil, opts...)
 	if err != nil {
 		return nil, err
 	}
